@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RoboFormLocal</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      width: 300px;
+      padding: 10px;
+    }
+    #form-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 10px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    #form-list li {
+      padding: 8px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    #form-list li:hover {
+      background-color: #f0f0f0;
+    }
+    #no-forms {
+      padding: 8px;
+      color: #777;
+    }
+    #save-section {
+      margin-top: 10px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+    input[type="text"] {
+      width: calc(100% - 12px);
+      padding: 5px;
+      margin-bottom: 5px;
+    }
+    button {
+      width: 100%;
+      padding: 8px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h3>Saved Forms for this page</h3>
+  <div id="status" style="display:none; color:green; margin-bottom:8px;"></div>
+  <ul id="form-list">
+  </ul>
+  <div id="no-forms" style="display: none;">No saved forms for this URL.</div>
+
+  <div id="save-section">
+    <input type="text" id="form-name-input" placeholder="Enter a name for this form...">
+    <button id="save-form-button">Save Current Form</button>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html> 
