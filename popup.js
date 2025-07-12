@@ -21,11 +21,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         savedForms.forEach((formInstance) => {
           const listItem = document.createElement('li');
-          // Use the name, or fall back to the timestamp
-          listItem.textContent = formInstance.name || `Saved at: ${new Date(formInstance.timestamp).toLocaleString()}`;
           listItem.dataset.formId = formInstance.id;
           
-          listItem.addEventListener('click', () => {
+          // Create the form name span
+          const formNameSpan = document.createElement('span');
+          formNameSpan.className = 'form-name';
+          formNameSpan.textContent = formInstance.name || `Saved at: ${new Date(formInstance.timestamp).toLocaleString()}`;
+          
+          // Create the delete button
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.title = 'Delete this saved form';
+          
+          // Add event listeners
+          formNameSpan.addEventListener('click', () => {
             chrome.tabs.sendMessage(currentTab.id, {
               action: 'fill_form',
               formData: formInstance.data
@@ -38,6 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
               window.close();
             });
           });
+          
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent triggering the form fill
+            if (confirm('Are you sure you want to delete this saved form?')) {
+              deleteFormData(currentTab.url, formInstance.id);
+            }
+          });
+          
+          listItem.appendChild(formNameSpan);
+          listItem.appendChild(deleteBtn);
           formList.appendChild(listItem);
         });
       } else {
@@ -54,6 +74,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       statusDiv.style.display = 'none';
     }, 3000);
+  }
+
+  function deleteFormData(url, formId) {
+    const storageKey = `forms_${url}`;
+    chrome.storage.sync.get([storageKey], (result) => {
+      const savedForms = result[storageKey] || [];
+      const updatedForms = savedForms.filter(form => form.id !== formId);
+      
+      chrome.storage.sync.set({ [storageKey]: updatedForms }, () => {
+        if (chrome.runtime.lastError) {
+          showStatus('Failed to delete form data.', true);
+          return;
+        }
+        showStatus('Form deleted successfully!', false);
+        loadSavedForms(url); // Refresh the list
+      });
+    });
   }
 
   // --- Event Listeners ---
