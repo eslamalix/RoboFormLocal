@@ -29,10 +29,21 @@ document.addEventListener('DOMContentLoaded', () => {
           formNameSpan.textContent = formInstance.name || `Saved at: ${new Date(formInstance.timestamp).toLocaleString()}`;
           
           // Create the delete button
+          // Create the edit button
+          const editBtn = document.createElement('button');
+          editBtn.className = 'edit-btn';
+          editBtn.textContent = 'Edit';
+          editBtn.title = 'Edit this saved form';
+          
+          // Create the delete button
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'delete-btn';
           deleteBtn.textContent = 'Delete';
           deleteBtn.title = 'Delete this saved form';
+          
+          // Create button group container
+          const buttonGroup = document.createElement('div');
+          buttonGroup.className = 'button-group';
           
           // Add event listeners
           formNameSpan.addEventListener('click', () => {
@@ -49,6 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           });
           
+          editBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent triggering the form fill
+            const formName = formInstance.name || `Saved at: ${new Date(formInstance.timestamp).toLocaleString()}`;
+            if (confirm(`Update "${formName}" with current form data from the page?`)) {
+              updateFormData(formInstance);
+            }
+          });
+          
           deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent triggering the form fill
             if (confirm('Are you sure you want to delete this saved form?')) {
@@ -56,8 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           });
           
+          buttonGroup.appendChild(editBtn);
+          buttonGroup.appendChild(deleteBtn);
           listItem.appendChild(formNameSpan);
-          listItem.appendChild(deleteBtn);
+          listItem.appendChild(buttonGroup);
           formList.appendChild(listItem);
         });
       } else {
@@ -90,6 +111,60 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatus('Form deleted successfully!', false);
         loadSavedForms(url); // Refresh the list
       });
+    });
+  }
+
+  function updateFormData(formInstance) {
+    // Check if the page supports content scripts
+    if (currentTab.url.startsWith('chrome://') || 
+        currentTab.url.startsWith('edge://') || 
+        currentTab.url.startsWith('about:') ||
+        currentTab.url.startsWith('moz-extension://') ||
+        currentTab.url.startsWith('chrome-extension://') ||
+        currentTab.url.startsWith('extension://')) {
+      showStatus('Cannot update form on this type of page.', true);
+      return;
+    }
+
+    showStatus('Updating form data...', false);
+
+    // Get current form data from the page
+    chrome.tabs.sendMessage(currentTab.id, { action: 'get_form_data' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError.message);
+        showStatus('Could not access the page. Try refreshing the page.', true);
+        return;
+      }
+      if (response && response.formData && response.formData.length > 0) {
+        // Update the existing form instance with new data
+        const updatedForm = {
+          ...formInstance,
+          data: response.formData,
+          timestamp: Date.now() // Update timestamp to show when it was last updated
+        };
+
+        // Save to storage
+        const storageKey = `forms_${currentTab.url}`;
+        chrome.storage.sync.get([storageKey], (result) => {
+          const savedForms = result[storageKey] || [];
+          const formIndex = savedForms.findIndex(form => form.id === formInstance.id);
+          
+          if (formIndex !== -1) {
+            savedForms[formIndex] = updatedForm;
+            
+            chrome.storage.sync.set({ [storageKey]: savedForms }, () => {
+              if (chrome.runtime.lastError) {
+                showStatus('Failed to update form data.', true);
+                return;
+              }
+              showStatus('Form updated successfully!', false);
+              loadSavedForms(currentTab.url); // Refresh the list
+            });
+          }
+        });
+      } else {
+        showStatus('No form found on the page to update.', true);
+      }
     });
   }
 
